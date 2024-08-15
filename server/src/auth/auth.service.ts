@@ -29,6 +29,8 @@ export class AuthService {
       username,
       email,
       password: hashedPassword,
+      friends: [],
+      socketId: '',
     };
     let newUser = await this.userModel.create(newUserObject);
 
