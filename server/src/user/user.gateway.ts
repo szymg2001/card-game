@@ -17,11 +17,9 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(socket: Socket) {
-    console.log('Handling connection...', socket.handshake);
     const token = socket.handshake.auth.token;
 
     if (!token) {
-      console.log('Connection dropped, token incorrect');
       socket.disconnect();
       return;
     }
@@ -32,10 +30,14 @@ export class UserGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       await this.userModel.findByIdAndUpdate(userId, { socketId: socket.id });
     } catch (error) {
-      console.log('Connection dropped, token incorrect 2');
       socket.disconnect();
     }
   }
 
-  async handleDisconnect(client: any) {}
+  async handleDisconnect(socket: Socket) {
+    await this.userModel.findOneAndUpdate(
+      { socketId: socket.id },
+      { socketId: '' },
+    );
+  }
 }

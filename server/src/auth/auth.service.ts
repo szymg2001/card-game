@@ -19,7 +19,7 @@ export class AuthService {
     //Validate data
     if (password !== confirmPassword)
       throw new HttpException('Passwords do not match', HttpStatus.FORBIDDEN);
-    let exists = this.userModel.exists({ email });
+    let exists = await this.userModel.exists({ email });
     if (exists)
       throw new HttpException('User already exists', HttpStatus.FORBIDDEN);
 
