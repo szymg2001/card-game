@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
-import { CreateGameDto } from './game.dto';
+import { CreateGameDto, JoinGameDto } from './game.dto';
 import { GameService } from './game.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 
@@ -11,5 +11,10 @@ export class GameController {
   @Post('/create')
   createGame(@Req() request) {
     return this.gameService.createGame({ ownerId: request.user.sub });
+  }
+
+  @Post('/join')
+  joinGame(@Req() request, @Body() dto: JoinGameDto) {
+    return this.gameService.joinGame({ userId: request.user.sub, ...dto });
   }
 }

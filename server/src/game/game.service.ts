@@ -1,8 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Game } from 'src/models/gameSchema';
-import { CreateGameDto } from './game.dto';
+import { CreateGameDto, JoinGameDto } from './game.dto';
 import { User } from 'src/models/userSchema';
 
 @Injectable()
@@ -11,6 +11,17 @@ export class GameService {
     @InjectModel(Game.name) private readonly gameModel: Model<Game>,
     @InjectModel(User.name) private readonly userModel: Model<User>,
   ) {}
+
+  async checkIfInGame(id: mongoose.Schema.Types.ObjectId) {
+    //Check if user is already in game
+    const isInGame = await this.gameModel.findOne({
+      'users.userId': id,
+    });
+    if (isInGame) {
+      throw new HttpException('User already in game', HttpStatus.FORBIDDEN);
+      return; //return user to game
+    }
+  }
 
   async createGame(data: CreateGameDto) {
     //Check if user exists
@@ -22,12 +33,7 @@ export class GameService {
       );
 
     //Check if user is already in game
-    const isInGame = await this.gameModel.findOne({
-      'users.$.userId': data.ownerId,
-    });
-    if (isInGame) {
-      return; //return user to game
-    }
+    await this.checkIfInGame(data.ownerId);
 
     //Create new game
     const newGameObject: Game = {
@@ -41,6 +47,31 @@ export class GameService {
 
     return {
       gameId: newGame._id,
+    };
+  }
+
+  async joinGame(
+    data: JoinGameDto & { userId: mongoose.Schema.Types.ObjectId },
+  ) {
+    //Check if user is already in game
+    await this.checkIfInGame(data.userId);
+
+    const game = await this.gameModel.findOne({ code: data.code });
+    if (!game) {
+      throw new HttpException('Game not found', HttpStatus.NOT_FOUND, {
+        cause: 'Code',
+      });
+    }
+
+    game.users.push({
+      userId: data.userId,
+      cardsInHand: [],
+      isOwner: false,
+    });
+
+    await game.save();
+    return {
+      gameId: game._id,
     };
   }
 }
