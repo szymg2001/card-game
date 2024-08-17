@@ -44,4 +44,9 @@ export class Game {
 
   @Prop([GameCardSchema])
   discardPile: GameCard[];
+
+  @Prop()
+  code: string;
 }
+
+export const GameSchema = SchemaFactory.createForClass(Game);
