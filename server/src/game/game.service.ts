@@ -74,4 +74,15 @@ export class GameService {
       gameId: game._id,
     };
   }
+
+  async getGame(params: { id: string }) {
+    const { id } = params;
+    const game = await this.gameModel.findById(id);
+
+    if (!game) throw new HttpException('Game not found', HttpStatus.NOT_FOUND);
+
+    return {
+      game,
+    };
+  }
 }

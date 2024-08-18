@@ -7,7 +7,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Observable } from 'rxjs';
 import { Game } from 'src/models/gameSchema';
 
@@ -37,7 +37,9 @@ export class GameUserGuard implements CanActivate {
     if (!game) throw new HttpException('Game not found', HttpStatus.NOT_FOUND);
 
     //Check if user is in game
-    let isInGame = game.users.some((e) => e.userId === userId);
+    let isInGame = game.users.some(
+      (e) => e.userId.toString() === userId.toString(),
+    );
 
     if (!isInGame)
       throw new ForbiddenException(
