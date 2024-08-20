@@ -2,14 +2,17 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { Game } from 'src/models/gameSchema';
-import { CreateGameDto, JoinGameDto } from './game.dto';
+import { CreateGameDto, GameIdDto, JoinGameDto } from './game.dto';
 import { User } from 'src/models/userSchema';
+import { Cards } from './cards';
+import { GameGateway } from './game.gateway';
 
 @Injectable()
 export class GameService {
   constructor(
     @InjectModel(Game.name) private readonly gameModel: Model<Game>,
     @InjectModel(User.name) private readonly userModel: Model<User>,
+    private readonly gameGateway: GameGateway,
   ) {}
 
   async checkIfInGame(id: mongoose.Schema.Types.ObjectId) {
@@ -42,6 +45,7 @@ export class GameService {
       drawPile: [],
       discardPile: [],
       status: 'lobby',
+      turn: 0,
     };
     const newGame = await this.gameModel.create(newGameObject);
 
@@ -84,5 +88,29 @@ export class GameService {
     return {
       game,
     };
+  }
+
+  async startGame(data: GameIdDto) {
+    const { gameId } = data;
+
+    const game = await this.gameModel.findById(gameId);
+    if (!game) throw new HttpException('Game not found', HttpStatus.NOT_FOUND);
+
+    //Generate cards
+    const deck = new Cards(7);
+    game.users.forEach((el, index) => {
+      game.users[index].cardsInHand = deck.generateHand();
+    });
+
+    game.drawPile = deck.cards;
+
+    //Change status
+    game.status = 'started';
+
+    //Emit event to users
+    const userIdArray = game.users.map((el) => el.userId);
+    this.gameGateway.startGameForUsers(userIdArray, {
+      gameId: game._id.toString(),
+    });
   }
 }

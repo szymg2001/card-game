@@ -9,10 +9,13 @@ export class GameCard {
   value: string;
 
   @Prop()
-  isSpecial: string;
+  color: string;
 
   @Prop()
-  instruction: string;
+  isSpecial: boolean;
+
+  @Prop()
+  imgName: string;
 }
 
 const GameCardSchema = SchemaFactory.createForClass(GameCard);
@@ -47,6 +50,9 @@ export class Game {
 
   @Prop()
   code: string;
+
+  @Prop()
+  turn: number;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);

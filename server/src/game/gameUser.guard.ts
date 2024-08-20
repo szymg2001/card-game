@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { Observable } from 'rxjs';
 import { Game } from 'src/models/gameSchema';
 
 @Injectable()

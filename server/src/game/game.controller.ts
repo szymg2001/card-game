@@ -7,7 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CreateGameDto, JoinGameDto } from './game.dto';
+import { CreateGameDto, GameIdDto, JoinGameDto } from './game.dto';
 import { GameService } from './game.service';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { GameUserGuard } from './gameUser.guard';
@@ -31,5 +31,11 @@ export class GameController {
   @Get(':id')
   getGame(@Param() params: { id: string }) {
     return this.gameService.getGame(params);
+  }
+
+  @UseGuards(GameUserGuard)
+  @Post('/start')
+  startGame(@Body() dto: GameIdDto) {
+    return this.gameService.startGame(dto);
   }
 }
