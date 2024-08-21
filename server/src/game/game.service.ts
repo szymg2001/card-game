@@ -112,5 +112,7 @@ export class GameService {
     this.gameGateway.startGameForUsers(userIdArray, {
       gameId: game._id.toString(),
     });
+
+    await game.save();
   }
 }
