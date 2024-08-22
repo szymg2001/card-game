@@ -110,7 +110,13 @@ export class GameService {
     //Emit event to users
     const userIdArray = game.users.map((el) => el.userId);
     this.gameGateway.startGameForUsers(userIdArray, {
-      gameId: game._id.toString(),
+      gameId: game._id,
+      code: game.code,
+      drawPileLength: game.drawPile.length,
+      discardPileLength: game.discardPile.length,
+      status: game.status,
+      turn: game.turn,
+      users: [],
     });
 
     await game.save();

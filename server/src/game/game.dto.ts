@@ -34,3 +34,20 @@ export class Card {
   value: CardValue;
   imgName: string;
 }
+
+export class UserGameViewPlayerDto {
+  username: string;
+  userId: mongoose.Schema.Types.ObjectId;
+  cardsInHandLength: number;
+  isOwner: boolean;
+}
+
+export class UserGameViewDto {
+  gameId: mongoose.Types.ObjectId;
+  code: string;
+  drawPileLength: number;
+  discardPileLength: number;
+  status: 'lobby' | 'started' | 'endScreen';
+  turn: number;
+  users: UserGameViewPlayerDto[];
+}
