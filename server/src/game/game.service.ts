@@ -39,9 +39,17 @@ export class GameService {
     await this.checkIfInGame(data.ownerId);
 
     //Create new game
+    let user = await this.userModel.findById(data.ownerId);
     const newGameObject: Game = {
       code: '123456',
-      users: [{ userId: data.ownerId, isOwner: true, cardsInHand: [] }],
+      users: [
+        {
+          userId: data.ownerId,
+          isOwner: true,
+          cardsInHand: [],
+          username: user.username,
+        },
+      ],
       drawPile: [],
       discardPile: [],
       status: 'lobby',
@@ -67,10 +75,13 @@ export class GameService {
       });
     }
 
+    let user = await this.userModel.findById(data.userId);
+
     game.users.push({
       userId: data.userId,
       cardsInHand: [],
       isOwner: false,
+      username: user.username,
     });
 
     await game.save();

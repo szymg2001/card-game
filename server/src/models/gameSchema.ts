@@ -30,6 +30,9 @@ export class GameUser {
 
   @Prop([GameCardSchema])
   cardsInHand: GameCard[];
+
+  @Prop()
+  username: string;
 }
 
 const GameUserSchema = SchemaFactory.createForClass(GameUser);
