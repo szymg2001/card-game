@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
 import { PlayCardDto, UserGameViewDto } from './game.dto';
 import { Game } from 'src/models/gameSchema';
+import { GameService, returnGame } from './game.service';
 
 @WebSocketGateway()
 export class GameGateway implements OnGatewayInit {
@@ -43,12 +44,13 @@ export class GameGateway implements OnGatewayInit {
 
   @SubscribeMessage('playCard')
   async playCard(
-    @MessageBody() data: PlayCardDto,
+    @MessageBody() data: /* PlayCardDto */ any,
     @ConnectedSocket() client: Socket,
   ) {
     try {
+      const { gameId, userId, cardIndex } = data.data;
       //Get all users socketId in game
-      let game = await this.gameModel.findById(data.gameId);
+      let game = await this.gameModel.findById(gameId);
       if (!game) throw new Error('Game does not exist');
 
       const idArray = game.users.map((user) => user.userId);
@@ -67,9 +69,9 @@ export class GameGateway implements OnGatewayInit {
       //-Sprawdź czy karta pasuje do special = jeśli nie - block => zagraj kartę
 
       const userIndex = game.users.findIndex(
-        (users) => users.userId.toString() === data.userId.toString(),
+        (users) => users.userId.toString() === userId.toString(),
       );
-      const playedCard = game.users[userIndex].cardsInHand[data.cardIndex];
+      const playedCard = game.users[userIndex].cardsInHand[cardIndex];
       const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
 
       if (!playedCard.isSpecial) {
@@ -84,7 +86,7 @@ export class GameGateway implements OnGatewayInit {
 
           //remove card from hand and push it to discardPile
           game.discardPile.push(
-            ...game.users[userIndex].cardsInHand.splice(data.cardIndex, 1),
+            ...game.users[userIndex].cardsInHand.splice(cardIndex, 1),
           );
         } else {
           throw new Error("You can't play this card");
@@ -109,7 +111,7 @@ export class GameGateway implements OnGatewayInit {
         }
 
         game.discardPile.push(
-          ...game.users[userIndex].cardsInHand.splice(data.cardIndex, 1),
+          ...game.users[userIndex].cardsInHand.splice(cardIndex, 1),
         );
       }
 
@@ -169,8 +171,15 @@ export class GameGateway implements OnGatewayInit {
 
       game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
       game.save();
+      let returnData = returnGame(game, userId);
       //Emit played card to every player
+      const users = await this.userModel.find({ _id: { $in: idArray } });
+      users.forEach((el) => {
+        this.server.to(el.socketId).emit('playedCard', returnData);
+      });
+      //this.server.to(client)
     } catch (error) {
+      console.log('No nie pykło', error.message);
       client.emit('error', { message: error.message });
     }
   }

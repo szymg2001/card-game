@@ -29,8 +29,8 @@ export class GameController {
 
   @UseGuards(GameUserGuard)
   @Get(':id')
-  getGame(@Param() params: { id: string }) {
-    return this.gameService.getGame(params);
+  getGame(@Req() request, @Param() params: { id: string }) {
+    return this.gameService.getGame({ ...params, userId: request.user.sub });
   }
 
   @UseGuards(GameUserGuard)
