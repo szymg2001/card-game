@@ -7,6 +7,33 @@ import { User } from 'src/models/userSchema';
 import { Cards } from './cards';
 import { GameGateway } from './game.gateway';
 
+export function returnGame(
+  game: mongoose.Document<unknown, {}, Game> &
+    Game & {
+      _id: mongoose.Types.ObjectId;
+    },
+  userId: mongoose.Types.ObjectId,
+) {
+  return {
+    game: {
+      gameId: game._id,
+      code: game.code,
+      drawPileLength: game.drawPile.length,
+      discardPileLength: game.discardPile.length,
+      status: game.status,
+      turn: game.turn,
+      users: game.users.map((el) => ({
+        username: el.username,
+        userId: el.userId,
+        cardsInHand:
+          el.userId.toString() === userId.toString()
+            ? el.cardsInHand
+            : el.cardsInHand.length,
+      })),
+    },
+  };
+}
+
 @Injectable()
 export class GameService {
   constructor(
@@ -55,6 +82,8 @@ export class GameService {
       status: 'lobby',
       turn: 0,
       specialActive: null,
+      direction: 1,
+      specialSum: 0,
     };
     const newGame = await this.gameModel.create(newGameObject);
 
@@ -91,15 +120,13 @@ export class GameService {
     };
   }
 
-  async getGame(params: { id: string }) {
+  async getGame(params: { id: string; userId: mongoose.Types.ObjectId }) {
     const { id } = params;
     const game = await this.gameModel.findById(id);
 
     if (!game) throw new HttpException('Game not found', HttpStatus.NOT_FOUND);
 
-    return {
-      game,
-    };
+    return returnGame(game, params.userId);
   }
 
   async startGame(data: GameIdDto) {

@@ -56,6 +56,15 @@ export class Game {
 
   @Prop()
   turn: number;
+
+  @Prop()
+  specialActive: 'plus' | 'stop' | null;
+
+  @Prop()
+  specialSum: number;
+
+  @Prop()
+  direction: -1 | 1;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
