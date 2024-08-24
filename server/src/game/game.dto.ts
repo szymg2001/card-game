@@ -51,3 +51,9 @@ export class UserGameViewDto {
   turn: number;
   users: UserGameViewPlayerDto[];
 }
+
+export class PlayCardDto {
+  gameId: mongoose.Types.ObjectId;
+  cardIndex: number;
+  userId: mongoose.Types.ObjectId;
+}

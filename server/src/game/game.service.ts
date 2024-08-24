@@ -54,6 +54,7 @@ export class GameService {
       discardPile: [],
       status: 'lobby',
       turn: 0,
+      specialActive: null,
     };
     const newGame = await this.gameModel.create(newGameObject);
 
