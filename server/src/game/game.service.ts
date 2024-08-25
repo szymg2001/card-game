@@ -141,6 +141,8 @@ export class GameService {
       game.users[index].cardsInHand = deck.generateHand();
     });
 
+    let firstNonBlack = deck.cards.findIndex((el) => el.color !== 'black');
+    game.discardPile = deck.cards.splice(firstNonBlack, 1);
     game.drawPile = deck.cards;
 
     //Change status
