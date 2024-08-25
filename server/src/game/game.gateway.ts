@@ -11,7 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
 import { PlayCardDto, UserGameViewDto } from './game.dto';
 import { Game } from 'src/models/gameSchema';
-import { GameService, returnGame } from './game.service';
+import { returnGame } from './game.service';
 
 @WebSocketGateway()
 export class GameGateway implements OnGatewayInit {
@@ -48,43 +48,28 @@ export class GameGateway implements OnGatewayInit {
     @ConnectedSocket() client: Socket,
   ) {
     try {
-      const { gameId, userId, cardIndex } = data.data;
-      //Get all users socketId in game
+      const { gameId, userId, cardIndex, selectedColor } = data.data;
+      //Get socketId of every user
       let game = await this.gameModel.findById(gameId);
       if (!game) throw new Error('Game does not exist');
-
       const idArray = game.users.map((user) => user.userId);
 
-      //Validate if card is playable
-
-      //Jeśli karta jest zwykła - sprawdź czy pasuje kolor, czy pasuje znak i czy special nie jest aktywny -> zagraj kartę
-      //Jeśli karta jest zwykła a special jest aktywny => nie pozwalaj na zagranie karty
-      //Jeśli karta jest specjalna i special jest aktywny - sprawdź czy znak pasuje => zagraj kartę jeśli pasuje
-      //Jeśli karta jest specjalna i special nie jest aktywny - sprawdź czy kolor pasuje, czy ewentualnie znak pasuje, czy karta jest czarna => aktywuj special i zagraj kartę
-
-      //Jeśli special jest null
-      //-Jeśli karta jest zwykła = sprawdź kolor i value => zagraj kartę
-      //-Jeśli karta jest specjalna = sprawdź kolor i value i czy jest black => zagraj kartę, aktywuj special
-      //Jeśli special jest aktywny
-      //-Sprawdź czy karta pasuje do special = jeśli nie - block => zagraj kartę
-
+      //Get user index and cards
       const userIndex = game.users.findIndex(
         (users) => users.userId.toString() === userId.toString(),
       );
       const playedCard = game.users[userIndex].cardsInHand[cardIndex];
       const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
 
+      //Validate card
       if (!playedCard.isSpecial) {
         if (game.specialActive === null) {
           if (
             lastDiscardedCard.color !== playedCard.color &&
-            lastDiscardedCard.value !== playedCard.value
+            lastDiscardedCard.value !== playedCard.value &&
+            lastDiscardedCard.selectedColor !== playedCard.color
           )
             throw new Error("You can't play this card");
-
-          //Play card
-
-          //remove card from hand and push it to discardPile
           game.discardPile.push(
             ...game.users[userIndex].cardsInHand.splice(cardIndex, 1),
           );
@@ -92,19 +77,29 @@ export class GameGateway implements OnGatewayInit {
           throw new Error("You can't play this card");
         }
       } else {
+        if (playedCard.color === 'black' && !selectedColor) {
+          throw new Error('You need to select color to play this card');
+        } else {
+          playedCard.selectedColor = selectedColor;
+        }
         if (
           lastDiscardedCard.color !== playedCard.color &&
           lastDiscardedCard.value !== playedCard.value &&
-          playedCard.color !== 'black'
+          playedCard.color !== 'black' &&
+          lastDiscardedCard.selectedColor !== playedCard.color
         ) {
           throw new Error("You can't play this card");
         }
 
         if (playedCard.value === '+2' || playedCard.value === '+4') {
+          if (game.specialActive !== 'plus' && game.specialActive !== null)
+            throw new Error("You can't play this card");
           game.specialActive = 'plus';
 
           game.specialSum += parseInt(playedCard.value.split('+')[1]);
         } else if (playedCard.value === 'stop') {
+          if (game.specialActive !== 'stop' && game.specialActive !== null)
+            throw new Error("You can't play this card");
           game.specialActive = 'stop';
 
           game.specialSum += 1;
@@ -115,71 +110,17 @@ export class GameGateway implements OnGatewayInit {
         );
       }
 
-      /*  if (game.specialActive === null) {
-        if (!playedCard.isSpecial) {
-          if (
-            lastDiscardedCard.color !== playedCard.color &&
-            lastDiscardedCard.value !== playedCard.value
-          )
-            throw new Error("You can't play this card");
-
-          //Play card
-
-          //remove card from hand and push it to discardPile
-          game.discardPile.push(
-            ...game.users[userIndex].cardsInHand.splice(data.cardIndex, 1),
-          );
-        } else {
-          if (
-            lastDiscardedCard.color !== playedCard.color &&
-            lastDiscardedCard.value !== playedCard.value &&
-            playedCard.color !== 'black'
-          )
-            throw new Error("You can't play this card");
-
-          //special true
-          if (playedCard.value === '+2' || playedCard.value === '+4') {
-            game.specialActive = 'plus';
-
-            game.specialSum += parseInt(playedCard.value.split('+')[1]);
-          } else if (playedCard.value === 'stop') {
-            game.specialActive = 'stop';
-
-            game.specialSum += 1;
-          }
-
-          //remove card from hand and push it to discardPile
-          game.discardPile.push(
-            ...game.users[userIndex].cardsInHand.splice(data.cardIndex, 1),
-          );
-        }
-      } else {
-        if (game.specialActive === 'plus') {
-          if (playedCard.color !== lastDiscardedCard.color)
-            throw new Error("You can't play this card");
-          if (
-            playedCard.value !== '+2' &&
-            playedCard.value !== '+4' &&
-            playedCard.value !== 'rev'
-          ) {
-            throw new Error("You can't play this card");
-          }
-
-          //Play card
-        }
-      } */
-
+      //Update turn and save game
       game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
       game.save();
       let returnData = returnGame(game, userId);
+
       //Emit played card to every player
       const users = await this.userModel.find({ _id: { $in: idArray } });
       users.forEach((el) => {
         this.server.to(el.socketId).emit('playedCard', returnData);
       });
-      //this.server.to(client)
     } catch (error) {
-      console.log('No nie pykło', error.message);
       client.emit('error', { message: error.message });
     }
   }

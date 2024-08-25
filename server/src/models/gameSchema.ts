@@ -16,6 +16,9 @@ export class GameCard {
 
   @Prop()
   imgName: string;
+
+  @Prop()
+  selectedColor?: string;
 }
 
 const GameCardSchema = SchemaFactory.createForClass(GameCard);

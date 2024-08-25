@@ -20,6 +20,7 @@ export function returnGame(
       code: game.code,
       drawPileLength: game.drawPile.length,
       discardPileLength: game.discardPile.length,
+      lastDiscardedCard: game.discardPile[game.discardPile.length - 1],
       status: game.status,
       turn: game.turn,
       users: game.users.map((el) => ({

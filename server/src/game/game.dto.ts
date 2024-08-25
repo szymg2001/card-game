@@ -33,6 +33,7 @@ export class Card {
   isSpecial: boolean;
   value: CardValue;
   imgName: string;
+  selectedColor?: 'red' | 'blue' | 'yellow' | 'green';
 }
 
 export class UserGameViewPlayerDto {
