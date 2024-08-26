@@ -55,6 +55,7 @@ export class UserGameViewDto {
 
 export class PlayCardDto {
   gameId: mongoose.Types.ObjectId;
-  cardIndex: number;
+  cardIndex: number[];
   userId: mongoose.Types.ObjectId;
+  selectedColor: 'red' | 'green' | 'yellow' | 'blue';
 }

@@ -44,7 +44,7 @@ export class GameGateway implements OnGatewayInit {
 
   @SubscribeMessage('playCard')
   async playCard(
-    @MessageBody() data: /* PlayCardDto */ any,
+    @MessageBody() data: { data: PlayCardDto },
     @ConnectedSocket() client: Socket,
   ) {
     try {
@@ -58,10 +58,19 @@ export class GameGateway implements OnGatewayInit {
       const userIndex = game.users.findIndex(
         (users) => users.userId.toString() === userId.toString(),
       );
-      const playedCard = game.users[userIndex].cardsInHand[cardIndex];
+
+      const playedCard = game.users[userIndex].cardsInHand[cardIndex[0]];
       const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
 
       //Validate card
+      if (cardIndex.length > 1) {
+        let cards = game.users[userIndex].cardsInHand.filter(
+          (el, index) => !cardIndex.includes(index),
+        );
+        if (cards.some((el) => el.value !== playedCard.value))
+          throw new Error("You can't play this card");
+      }
+
       if (!playedCard.isSpecial) {
         if (game.specialActive === null) {
           if (
@@ -70,9 +79,16 @@ export class GameGateway implements OnGatewayInit {
             lastDiscardedCard.selectedColor !== playedCard.color
           )
             throw new Error("You can't play this card");
-          game.discardPile.push(
-            ...game.users[userIndex].cardsInHand.splice(cardIndex, 1),
-          );
+          game.users[userIndex].cardsInHand = game.users[
+            userIndex
+          ].cardsInHand.filter((el, index) => {
+            if (cardIndex.includes(index)) {
+              game.discardPile.push(game.users[userIndex].cardsInHand[index]);
+              return false;
+            } else {
+              return true;
+            }
+          });
         } else {
           throw new Error("You can't play this card");
         }
@@ -96,18 +112,26 @@ export class GameGateway implements OnGatewayInit {
             throw new Error("You can't play this card");
           game.specialActive = 'plus';
 
-          game.specialSum += parseInt(playedCard.value.split('+')[1]);
+          game.specialSum +=
+            parseInt(playedCard.value.split('+')[1]) * cardIndex.length;
         } else if (playedCard.value === 'stop') {
           if (game.specialActive !== 'stop' && game.specialActive !== null)
             throw new Error("You can't play this card");
           game.specialActive = 'stop';
 
-          game.specialSum += 1;
+          game.specialSum += 1 * cardIndex.length;
         }
 
-        game.discardPile.push(
-          ...game.users[userIndex].cardsInHand.splice(cardIndex, 1),
-        );
+        game.users[userIndex].cardsInHand = game.users[
+          userIndex
+        ].cardsInHand.filter((el, index) => {
+          if (cardIndex.includes(index)) {
+            game.discardPile.push(game.users[userIndex].cardsInHand[index]);
+            return false;
+          } else {
+            return true;
+          }
+        });
       }
 
       //Update turn and save game
