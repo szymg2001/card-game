@@ -64,11 +64,12 @@ export class GameGateway implements OnGatewayInit {
 
       //Validate card
       if (cardIndex.length > 1) {
-        let cards = game.users[userIndex].cardsInHand.filter(
-          (el, index) => !cardIndex.includes(index),
+        let cards = game.users[userIndex].cardsInHand.filter((el, index) =>
+          cardIndex.includes(index),
         );
-        if (cards.some((el) => el.value !== playedCard.value))
+        if (cards.some((el) => el.value !== playedCard.value)) {
           throw new Error("You can't play this card");
+        }
       }
 
       if (!playedCard.isSpecial) {
@@ -136,7 +137,7 @@ export class GameGateway implements OnGatewayInit {
 
       //Update turn and save game
       game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
-      game.save();
+      await game.save();
       let returnData = returnGame(game, userId);
 
       //Emit played card to every player
