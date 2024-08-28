@@ -76,6 +76,7 @@ export class GameService {
           isOwner: true,
           cardsInHand: [],
           username: user.username,
+          stopped: 0,
         },
       ],
       drawPile: [],
@@ -113,6 +114,7 @@ export class GameService {
       cardsInHand: [],
       isOwner: false,
       username: user.username,
+      stopped: 0,
     });
 
     await game.save();

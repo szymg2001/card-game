@@ -36,6 +36,9 @@ export class GameUser {
 
   @Prop()
   username: string;
+
+  @Prop()
+  stopped: number;
 }
 
 const GameUserSchema = SchemaFactory.createForClass(GameUser);
