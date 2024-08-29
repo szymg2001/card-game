@@ -59,3 +59,8 @@ export class PlayCardDto {
   userId: mongoose.Types.ObjectId;
   selectedColor: 'red' | 'green' | 'yellow' | 'blue';
 }
+
+export class TakeCardDto {
+  gameId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+}

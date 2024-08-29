@@ -6,11 +6,11 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { Model, ObjectId } from 'mongoose';
+import mongoose, { Model, ObjectId } from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
-import { PlayCardDto, UserGameViewDto } from './game.dto';
-import { Game } from 'src/models/gameSchema';
+import { PlayCardDto, TakeCardDto, UserGameViewDto } from './game.dto';
+import { Game, GameCard } from 'src/models/gameSchema';
 import { returnGame } from './game.service';
 
 @WebSocketGateway()
@@ -35,6 +35,13 @@ export class GameGateway implements OnGatewayInit {
     return currentTurn;
   }
 
+  async getGame(gameId: mongoose.Types.ObjectId) {
+    const game = await this.gameModel.findById(gameId);
+    if (!game) throw new Error('Game does not exist');
+
+    return game;
+  }
+
   async startGameForUsers(usersIdArray: ObjectId[], data: UserGameViewDto) {
     const users = await this.userModel.find({ _id: { $in: usersIdArray } });
     users.forEach((el) => {
@@ -42,87 +49,34 @@ export class GameGateway implements OnGatewayInit {
     });
   }
 
-  @SubscribeMessage('playCard')
-  async playCard(
-    @MessageBody() data: { data: PlayCardDto },
-    @ConnectedSocket() client: Socket,
+  async takeCard() {}
+
+  async playCardFunction(
+    cardIndex: number[],
+    game: Game,
+    userIndex: number,
+    selectedColor: 'red' | 'green' | 'yellow' | 'blue',
   ) {
-    try {
-      const { gameId, userId, cardIndex, selectedColor } = data.data;
-      //Get socketId of every user
-      let game = await this.gameModel.findById(gameId);
-      if (!game) throw new Error('Game does not exist');
-      const idArray = game.users.map((user) => user.userId);
+    const playedCard = game.users[userIndex].cardsInHand[cardIndex[0]];
+    const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
 
-      //Get user index and cards
-      const userIndex = game.users.findIndex(
-        (users) => users.userId.toString() === userId.toString(),
+    if (cardIndex.length > 1) {
+      let cards = game.users[userIndex].cardsInHand.filter((el, index) =>
+        cardIndex.includes(index),
       );
-
-      const playedCard = game.users[userIndex].cardsInHand[cardIndex[0]];
-      const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
-
-      //Validate card
-      if (cardIndex.length > 1) {
-        let cards = game.users[userIndex].cardsInHand.filter((el, index) =>
-          cardIndex.includes(index),
-        );
-        if (cards.some((el) => el.value !== playedCard.value)) {
-          throw new Error("You can't play this card");
-        }
+      if (cards.some((el) => el.value !== playedCard.value)) {
+        throw new Error("You can't play this card");
       }
+    }
 
-      if (!playedCard.isSpecial) {
-        if (game.specialActive === null) {
-          if (
-            lastDiscardedCard.color !== playedCard.color &&
-            lastDiscardedCard.value !== playedCard.value &&
-            lastDiscardedCard.selectedColor !== playedCard.color
-          )
-            throw new Error("You can't play this card");
-          game.users[userIndex].cardsInHand = game.users[
-            userIndex
-          ].cardsInHand.filter((el, index) => {
-            if (cardIndex.includes(index)) {
-              game.discardPile.push(game.users[userIndex].cardsInHand[index]);
-              return false;
-            } else {
-              return true;
-            }
-          });
-        } else {
-          throw new Error("You can't play this card");
-        }
-      } else {
-        if (playedCard.color === 'black' && !selectedColor) {
-          throw new Error('You need to select color to play this card');
-        } else {
-          playedCard.selectedColor = selectedColor;
-        }
+    if (!playedCard.isSpecial) {
+      if (game.specialActive === null) {
         if (
           lastDiscardedCard.color !== playedCard.color &&
           lastDiscardedCard.value !== playedCard.value &&
-          playedCard.color !== 'black' &&
           lastDiscardedCard.selectedColor !== playedCard.color
-        ) {
+        )
           throw new Error("You can't play this card");
-        }
-
-        if (playedCard.value === '+2' || playedCard.value === '+4') {
-          if (game.specialActive !== 'plus' && game.specialActive !== null)
-            throw new Error("You can't play this card");
-          game.specialActive = 'plus';
-
-          game.specialSum +=
-            parseInt(playedCard.value.split('+')[1]) * cardIndex.length;
-        } else if (playedCard.value === 'stop') {
-          if (game.specialActive !== 'stop' && game.specialActive !== null)
-            throw new Error("You can't play this card");
-          game.specialActive = 'stop';
-
-          game.specialSum += 1 * cardIndex.length;
-        }
-
         game.users[userIndex].cardsInHand = game.users[
           userIndex
         ].cardsInHand.filter((el, index) => {
@@ -133,10 +87,76 @@ export class GameGateway implements OnGatewayInit {
             return true;
           }
         });
+      } else {
+        throw new Error("You can't play this card");
+      }
+    } else {
+      if (playedCard.color === 'black' && !selectedColor) {
+        throw new Error('You need to select color to play this card');
+      } else {
+        playedCard.selectedColor = selectedColor;
+      }
+      if (
+        lastDiscardedCard.color !== playedCard.color &&
+        lastDiscardedCard.value !== playedCard.value &&
+        playedCard.color !== 'black' &&
+        lastDiscardedCard.selectedColor !== playedCard.color
+      ) {
+        throw new Error("You can't play this card");
       }
 
+      if (playedCard.value === '+2' || playedCard.value === '+4') {
+        if (game.specialActive !== 'plus' && game.specialActive !== null)
+          throw new Error("You can't play this card");
+        game.specialActive = 'plus';
+
+        game.specialSum +=
+          parseInt(playedCard.value.split('+')[1]) * cardIndex.length;
+      } else if (playedCard.value === 'stop') {
+        if (game.specialActive !== 'stop' && game.specialActive !== null)
+          throw new Error("You can't play this card");
+        game.specialActive = 'stop';
+
+        game.specialSum += 1 * cardIndex.length;
+      }
+
+      game.users[userIndex].cardsInHand = game.users[
+        userIndex
+      ].cardsInHand.filter((el, index) => {
+        if (cardIndex.includes(index)) {
+          game.discardPile.push(game.users[userIndex].cardsInHand[index]);
+          return false;
+        } else {
+          return true;
+        }
+      });
+    }
+  }
+
+  @SubscribeMessage('playCard')
+  async playCard(
+    @MessageBody() data: { data: PlayCardDto },
+    @ConnectedSocket() client: Socket,
+  ) {
+    try {
+      const { gameId, userId, cardIndex, selectedColor } = data.data;
+      //Get socketId of every user
+      let game = await this.getGame(gameId);
+      const idArray = game.users.map((user) => user.userId);
+
+      //Get user index and cards
+      const userIndex = game.users.findIndex(
+        (users) => users.userId.toString() === userId.toString(),
+      );
+
+      await this.playCardFunction(cardIndex, game, userIndex, selectedColor);
+
       //Update turn and save game
-      game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
+      game.turn = await this.updateTurn(
+        game.turn,
+        game.direction,
+        game.users.length,
+      );
       await game.save();
       let returnData = returnGame(game, userId);
 
@@ -148,5 +168,152 @@ export class GameGateway implements OnGatewayInit {
     } catch (error) {
       client.emit('error', { message: error.message });
     }
+  }
+
+  @SubscribeMessage('checkFirst')
+  async checkFirstCard(
+    @MessageBody() data: { data: TakeCardDto },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { gameId, userId } = data.data;
+
+    //get Game and userIndex
+    const game = await this.getGame(gameId);
+    const playerIndex = game.users.findIndex(
+      (user) => user.userId.toString() === userId.toString(),
+    );
+    if (playerIndex === -1) throw new Error('Player does not exists');
+
+    const drawnCard = game.drawPile[0];
+
+    //Ask what to do
+    client.emit('confirmPlayCard', { drawnCard });
+
+    client.once('playCardResponse', async (response: boolean) => {
+      if (response) {
+        //play card
+        game.users[playerIndex].cardsInHand.push(drawnCard);
+        await this.playCardFunction(
+          [game.users[playerIndex].cardsInHand.length - 1],
+          game,
+          playerIndex,
+          'red' /* need to add selecting color functionality */,
+        );
+      } else {
+        //take card
+        if (game.specialActive !== null) {
+          if (game.specialActive === 'stop') {
+            game.users[playerIndex].stopped = game.specialSum;
+          } else if (game.specialActive === 'plus') {
+            game.users[playerIndex].cardsInHand.push(
+              ...game.drawPile.splice(0, game.specialSum),
+            );
+          }
+
+          game.specialActive = null;
+          game.specialSum = 0;
+        }
+      }
+    });
+  }
+
+  @SubscribeMessage('takeCard')
+  async drawCard(
+    @MessageBody() data: { data: TakeCardDto },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { gameId, userId } = data.data;
+
+    //get Game and userIndex
+    const game = await this.getGame(gameId);
+    const playerIndex = game.users.findIndex(
+      (user) => user.userId.toString() === userId.toString(),
+    );
+    if (playerIndex === -1) throw new Error('Player does not exists');
+
+    //Check first card if is playable
+    const drawnCard = game.drawPile[0];
+    const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
+
+    if (game.specialActive === null) {
+      if (
+        drawnCard.color === lastDiscardedCard.color ||
+        drawnCard.value === lastDiscardedCard.value ||
+        drawnCard.color === 'black'
+      ) {
+        //Ask what to do
+        client.emit('confirmPlayCard', { drawnCard });
+
+        client.once('playCardResponse', (response: boolean) => {
+          if (response) {
+            //play card
+          } else {
+            //take card
+          }
+        });
+      }
+    } else if (game.specialActive === 'plus') {
+      if (
+        drawnCard.value === '+2' ||
+        drawnCard.value === '+4' ||
+        drawnCard.value === 'rev'
+      ) {
+        //Ask what to do
+        client.emit('confirmPlayCard', { drawnCard });
+
+        client.once('playCardResponse', (response: boolean) => {
+          if (response) {
+            //play card
+          } else {
+            //take card
+          }
+        });
+      }
+    } else if (game.specialActive === 'stop') {
+      if (drawnCard.value === 'stop' || drawnCard.value === 'rev') {
+        //Ask what to do
+        client.emit('confirmPlayCard', { drawnCard });
+
+        client.once('playCardResponse', (response: boolean) => {
+          if (response) {
+            //play card
+          } else {
+            //take card
+          }
+        });
+      }
+    }
+
+    //Give player card
+
+    //Punish player if special active
+
+    //Change turn
+
+    //Emit event
+
+    /* //Get game
+    const game = await this.getGame(gameId);
+    const playerIndex = game.users.findIndex((user) => user.userId.toString() === userId.toString())
+    if(playerIndex === -1) throw new Error("Player does not exists")
+
+    //Check if any special active and punish player if yes
+    if (game.specialActive) {
+      if (game.specialActive === 'plus') {
+        //add specialSum number of cards
+      } else if (game.specialActive === 'stop') {
+        //set player stopped to specialSum
+        game.users[playerIndex].stopped = game.specialSum
+      }
+      //turn off special and clear specialSum
+      game.specialSum = 0
+      game.specialActive === null;
+    }
+
+    //Add card to player hand
+
+
+    //Change turn
+    //Send event to all players with updated game info */
   }
 }
