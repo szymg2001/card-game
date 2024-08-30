@@ -10,7 +10,7 @@ import mongoose, { Model, ObjectId } from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
 import { PlayCardDto, TakeCardDto, UserGameViewDto } from './game.dto';
-import { Game, GameCard } from 'src/models/gameSchema';
+import { Game } from 'src/models/gameSchema';
 import { returnGame } from './game.service';
 import { Cards } from './cards';
 
@@ -50,7 +50,21 @@ export class GameGateway implements OnGatewayInit {
     });
   }
 
-  async takeCard() {}
+  async emitGameAction(
+    game: mongoose.Document<unknown, {}, Game> &
+      Game & {
+        _id: mongoose.Types.ObjectId;
+      },
+    userId: mongoose.Types.ObjectId,
+  ) {
+    const idArray = game.users.map((user) => user.userId);
+    const users = await this.userModel.find({ _id: { $in: idArray } });
+
+    let returnData = returnGame(game, userId);
+    users.forEach((el) => {
+      this.server.to(el.socketId).emit('gameAction', returnData);
+    });
+  }
 
   async playCardFunction(
     cardIndex: number[],
@@ -143,7 +157,6 @@ export class GameGateway implements OnGatewayInit {
       const { gameId, userId, cardIndex, selectedColor } = data.data;
       //Get socketId of every user
       let game = await this.getGame(gameId);
-      const idArray = game.users.map((user) => user.userId);
 
       //Get user index and cards
       const userIndex = game.users.findIndex(
@@ -159,13 +172,9 @@ export class GameGateway implements OnGatewayInit {
         game.users.length,
       );
       await game.save();
-      let returnData = returnGame(game, userId);
 
-      //Emit played card to every player
-      const users = await this.userModel.find({ _id: { $in: idArray } });
-      users.forEach((el) => {
-        this.server.to(el.socketId).emit('playedCard', returnData);
-      });
+      //Emit event
+      this.emitGameAction(game, userId);
     } catch (error) {
       client.emit('error', { message: error.message });
     }
@@ -176,60 +185,75 @@ export class GameGateway implements OnGatewayInit {
     @MessageBody() data: { data: TakeCardDto },
     @ConnectedSocket() client: Socket,
   ) {
-    const { gameId, userId } = data.data;
+    try {
+      const { gameId, userId } = data.data;
 
-    //get Game and userIndex
-    const game = await this.getGame(gameId);
-    const playerIndex = game.users.findIndex(
-      (user) => user.userId.toString() === userId.toString(),
-    );
-    if (playerIndex === -1) throw new Error('Player does not exists');
+      //get Game and userIndex
+      const game = await this.getGame(gameId);
+      const playerIndex = game.users.findIndex(
+        (user) => user.userId.toString() === userId.toString(),
+      );
+      if (playerIndex === -1) throw new Error('Player does not exists');
 
-    //Check if drawPile is not empty and fill it
-    if (game.drawPile.length === 0) {
-      game.drawPile = new Cards().shuffle(game.discardPile);
-      game.discardPile = [];
-    }
-
-    const drawnCard = game.drawPile[0];
-
-    //Ask what to do
-    client.emit('confirmPlayCard', { drawnCard });
-
-    client.once('playCardResponse', async (response: boolean) => {
-      if (response) {
-        //play card
-        game.users[playerIndex].cardsInHand.push(drawnCard);
-        await this.playCardFunction(
-          [game.users[playerIndex].cardsInHand.length - 1],
-          game,
-          playerIndex,
-          'red' /* need to add selecting color functionality */,
-        );
-      } else {
-        //take card
-        if (game.specialActive !== null) {
-          if (game.specialActive === 'stop') {
-            game.users[playerIndex].stopped = game.specialSum;
-          } else if (game.specialActive === 'plus') {
-            if (game.drawPile.length < game.specialSum) {
-              game.drawPile = new Cards().shuffle(game.discardPile);
-              game.discardPile = [];
-            }
-            game.users[playerIndex].cardsInHand.push(
-              ...game.drawPile.splice(0, game.specialSum - 1),
-            );
-          }
-
-          game.specialActive = null;
-          game.specialSum = 0;
-        }
+      //Check if drawPile is not empty and fill it
+      if (game.drawPile.length === 0) {
+        game.drawPile = new Cards().shuffle(game.discardPile);
+        game.discardPile = [];
       }
 
-      //Update turn
-      game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
+      const drawnCard = game.drawPile[0];
 
-      //Emit event
-    });
+      //Ask what to do
+      client.emit('confirmPlayCard', { drawnCard });
+
+      client.once('playCardResponse', async (data: { response: boolean }) => {
+        try {
+          const { response } = data;
+          game.users[playerIndex].cardsInHand.push(drawnCard);
+          game.drawPile.splice(0, 1);
+          if (response) {
+            //play card
+            await this.playCardFunction(
+              [game.users[playerIndex].cardsInHand.length - 1],
+              game,
+              playerIndex,
+              'red' /* need to add selecting color functionality */,
+            );
+          } else {
+            //take card
+            if (game.specialActive !== null) {
+              if (game.specialActive === 'stop') {
+                game.users[playerIndex].stopped = game.specialSum;
+              } else if (game.specialActive === 'plus') {
+                if (game.drawPile.length < game.specialSum) {
+                  game.drawPile = new Cards().shuffle(game.discardPile);
+                  game.discardPile = [];
+                }
+                game.users[playerIndex].cardsInHand.push(
+                  ...game.drawPile.splice(0, game.specialSum - 1),
+                );
+              }
+
+              game.specialActive = null;
+              game.specialSum = 0;
+            }
+          }
+
+          //Update turn
+          game.turn = this.updateTurn(
+            game.turn,
+            game.direction,
+            game.users.length,
+          );
+
+          await game.save();
+          this.emitGameAction(game, userId);
+        } catch (error) {
+          client.emit('error', { message: error.message });
+        }
+      });
+    } catch (error) {
+      client.emit('error', { message: error.message });
+    }
   }
 }
