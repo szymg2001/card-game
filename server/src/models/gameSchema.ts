@@ -1,15 +1,16 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
+import { CardColor, CardValue } from 'src/game/game.dto';
 
 export type GameDocument = HydratedDocument<Game>;
 
 @Schema()
 export class GameCard {
   @Prop()
-  value: string;
+  value: CardValue;
 
   @Prop()
-  color: string;
+  color: CardColor | 'black';
 
   @Prop()
   isSpecial: boolean;
@@ -18,7 +19,7 @@ export class GameCard {
   imgName: string;
 
   @Prop()
-  selectedColor?: string;
+  selectedColor?: CardColor;
 }
 
 const GameCardSchema = SchemaFactory.createForClass(GameCard);

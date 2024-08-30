@@ -12,7 +12,7 @@ export class JoinGameDto {
   code: string;
 }
 
-type CardValue =
+export type CardValue =
   | '1'
   | '2'
   | '3'
@@ -28,12 +28,14 @@ type CardValue =
   | 'stop'
   | 'rev';
 
+export type CardColor = 'red' | 'blue' | 'yellow' | 'green';
+
 export class Card {
-  color: 'red' | 'blue' | 'yellow' | 'green' | 'black';
+  color: CardColor | 'black';
   isSpecial: boolean;
   value: CardValue;
   imgName: string;
-  selectedColor?: 'red' | 'blue' | 'yellow' | 'green';
+  selectedColor?: CardColor;
 }
 
 export class UserGameViewPlayerDto {
@@ -57,7 +59,7 @@ export class PlayCardDto {
   gameId: mongoose.Types.ObjectId;
   cardIndex: number[];
   userId: mongoose.Types.ObjectId;
-  selectedColor: 'red' | 'green' | 'yellow' | 'blue';
+  selectedColor: CardColor;
 }
 
 export class TakeCardDto {
