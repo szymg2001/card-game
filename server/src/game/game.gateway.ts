@@ -12,6 +12,7 @@ import { User } from 'src/models/userSchema';
 import { PlayCardDto, TakeCardDto, UserGameViewDto } from './game.dto';
 import { Game, GameCard } from 'src/models/gameSchema';
 import { returnGame } from './game.service';
+import { Cards } from './cards';
 
 @WebSocketGateway()
 export class GameGateway implements OnGatewayInit {
@@ -184,6 +185,12 @@ export class GameGateway implements OnGatewayInit {
     );
     if (playerIndex === -1) throw new Error('Player does not exists');
 
+    //Check if drawPile is not empty and fill it
+    if (game.drawPile.length === 0) {
+      game.drawPile = new Cards().shuffle(game.discardPile);
+      game.discardPile = [];
+    }
+
     const drawnCard = game.drawPile[0];
 
     //Ask what to do
@@ -205,8 +212,12 @@ export class GameGateway implements OnGatewayInit {
           if (game.specialActive === 'stop') {
             game.users[playerIndex].stopped = game.specialSum;
           } else if (game.specialActive === 'plus') {
+            if (game.drawPile.length < game.specialSum) {
+              game.drawPile = new Cards().shuffle(game.discardPile);
+              game.discardPile = [];
+            }
             game.users[playerIndex].cardsInHand.push(
-              ...game.drawPile.splice(0, game.specialSum),
+              ...game.drawPile.splice(0, game.specialSum - 1),
             );
           }
 
@@ -214,106 +225,11 @@ export class GameGateway implements OnGatewayInit {
           game.specialSum = 0;
         }
       }
+
+      //Update turn
+      game.turn = this.updateTurn(game.turn, game.direction, game.users.length);
+
+      //Emit event
     });
-  }
-
-  @SubscribeMessage('takeCard')
-  async drawCard(
-    @MessageBody() data: { data: TakeCardDto },
-    @ConnectedSocket() client: Socket,
-  ) {
-    const { gameId, userId } = data.data;
-
-    //get Game and userIndex
-    const game = await this.getGame(gameId);
-    const playerIndex = game.users.findIndex(
-      (user) => user.userId.toString() === userId.toString(),
-    );
-    if (playerIndex === -1) throw new Error('Player does not exists');
-
-    //Check first card if is playable
-    const drawnCard = game.drawPile[0];
-    const lastDiscardedCard = game.discardPile[game.discardPile.length - 1];
-
-    if (game.specialActive === null) {
-      if (
-        drawnCard.color === lastDiscardedCard.color ||
-        drawnCard.value === lastDiscardedCard.value ||
-        drawnCard.color === 'black'
-      ) {
-        //Ask what to do
-        client.emit('confirmPlayCard', { drawnCard });
-
-        client.once('playCardResponse', (response: boolean) => {
-          if (response) {
-            //play card
-          } else {
-            //take card
-          }
-        });
-      }
-    } else if (game.specialActive === 'plus') {
-      if (
-        drawnCard.value === '+2' ||
-        drawnCard.value === '+4' ||
-        drawnCard.value === 'rev'
-      ) {
-        //Ask what to do
-        client.emit('confirmPlayCard', { drawnCard });
-
-        client.once('playCardResponse', (response: boolean) => {
-          if (response) {
-            //play card
-          } else {
-            //take card
-          }
-        });
-      }
-    } else if (game.specialActive === 'stop') {
-      if (drawnCard.value === 'stop' || drawnCard.value === 'rev') {
-        //Ask what to do
-        client.emit('confirmPlayCard', { drawnCard });
-
-        client.once('playCardResponse', (response: boolean) => {
-          if (response) {
-            //play card
-          } else {
-            //take card
-          }
-        });
-      }
-    }
-
-    //Give player card
-
-    //Punish player if special active
-
-    //Change turn
-
-    //Emit event
-
-    /* //Get game
-    const game = await this.getGame(gameId);
-    const playerIndex = game.users.findIndex((user) => user.userId.toString() === userId.toString())
-    if(playerIndex === -1) throw new Error("Player does not exists")
-
-    //Check if any special active and punish player if yes
-    if (game.specialActive) {
-      if (game.specialActive === 'plus') {
-        //add specialSum number of cards
-      } else if (game.specialActive === 'stop') {
-        //set player stopped to specialSum
-        game.users[playerIndex].stopped = game.specialSum
-      }
-      //turn off special and clear specialSum
-      game.specialSum = 0
-      game.specialActive === null;
-    }
-
-    //Add card to player hand
-
-
-    //Change turn
-    //Send event to all players with updated game info */
   }
 }

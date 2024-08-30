@@ -2,7 +2,7 @@ import { Card } from './game.dto';
 
 export class Cards {
   startingHand;
-  constructor(startingHand: number) {
+  constructor(startingHand: number = 7) {
     this.startingHand = startingHand;
   }
   cards: Card[] = [
@@ -128,10 +128,19 @@ export class Cards {
     return result;
   }
 
-  shuffle() {
-    for (let i = this.cards.length - 1; i > 0; i--) {
+  shuffle(cards?: Card[]) {
+    let shuffledCards = cards || this.cards;
+    let length = shuffledCards.length;
+    for (let i = length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+      [shuffledCards[i], shuffledCards[j]] = [
+        shuffledCards[j],
+        shuffledCards[i],
+      ];
     }
+
+    if (!cards) this.cards = shuffledCards;
+
+    return shuffledCards;
   }
 }
