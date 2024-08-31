@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { GameRules } from 'src/models/gameSchema';
 
 export class GameIdDto {
   gameId: mongoose.Schema.Types.ObjectId;
@@ -6,6 +7,7 @@ export class GameIdDto {
 
 export class CreateGameDto {
   ownerId: mongoose.Schema.Types.ObjectId;
+  rules: GameRules;
 }
 
 export class JoinGameDto {

@@ -45,6 +45,16 @@ export class GameUser {
 const GameUserSchema = SchemaFactory.createForClass(GameUser);
 
 @Schema()
+export class GameRules {
+  @Prop()
+  startingHand: number;
+
+  @Prop()
+  endCondition: number;
+}
+const GameRulesSchema = SchemaFactory.createForClass(GameRules);
+
+@Schema()
 export class Game {
   @Prop()
   status: 'lobby' | 'inGame' | 'endScreen';
@@ -72,6 +82,9 @@ export class Game {
 
   @Prop()
   direction: -1 | 1;
+
+  @Prop()
+  rules: GameRules;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
