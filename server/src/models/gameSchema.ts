@@ -47,7 +47,7 @@ const GameUserSchema = SchemaFactory.createForClass(GameUser);
 @Schema()
 export class Game {
   @Prop()
-  status: 'lobby' | 'started' | 'endScreen';
+  status: 'lobby' | 'inGame' | 'endScreen';
 
   @Prop([GameUserSchema])
   users: GameUser[];

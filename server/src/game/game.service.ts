@@ -2,7 +2,12 @@ import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
 import { Game } from 'src/models/gameSchema';
-import { CreateGameDto, GameIdDto, JoinGameDto } from './game.dto';
+import {
+  CreateGameDto,
+  GameIdDto,
+  JoinGameDto,
+  UserGameViewDto,
+} from './game.dto';
 import { User } from 'src/models/userSchema';
 import { Cards } from './cards';
 import { GameGateway } from './game.gateway';
@@ -13,25 +18,24 @@ export function returnGame(
       _id: mongoose.Types.ObjectId;
     },
   userId: mongoose.Types.ObjectId,
-) {
+): UserGameViewDto {
   return {
-    game: {
-      gameId: game._id,
-      code: game.code,
-      drawPileLength: game.drawPile.length,
-      discardPileLength: game.discardPile.length,
-      lastDiscardedCard: game.discardPile[game.discardPile.length - 1],
-      status: game.status,
-      turn: game.turn,
-      users: game.users.map((el) => ({
-        username: el.username,
-        userId: el.userId,
-        cardsInHand:
-          el.userId.toString() === userId.toString()
-            ? el.cardsInHand
-            : el.cardsInHand.length,
-      })),
-    },
+    gameId: game._id,
+    code: game.code,
+    drawPileLength: game.drawPile.length,
+    discardPileLength: game.discardPile.length,
+    lastDiscardedCard: game.discardPile[game.discardPile.length - 1],
+    status: game.status,
+    turn: game.turn,
+    users: game.users.map((el) => ({
+      username: el.username,
+      userId: el.userId,
+      stopped: false,
+      cardsInHand:
+        el.userId.toString() === userId.toString()
+          ? el.cardsInHand
+          : el.cardsInHand.length,
+    })),
   };
 }
 
@@ -149,19 +153,11 @@ export class GameService {
     game.drawPile = deck.cards;
 
     //Change status
-    game.status = 'started';
+    game.status = 'inGame';
 
     //Emit event to users
     const userIdArray = game.users.map((el) => el.userId);
-    this.gameGateway.startGameForUsers(userIdArray, {
-      gameId: game._id,
-      code: game.code,
-      drawPileLength: game.drawPile.length,
-      discardPileLength: game.discardPile.length,
-      status: game.status,
-      turn: game.turn,
-      users: [],
-    });
+    this.gameGateway.startGameForUsers(userIdArray, game._id);
 
     await game.save();
   }

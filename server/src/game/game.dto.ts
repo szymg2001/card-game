@@ -41,8 +41,9 @@ export class Card {
 export class UserGameViewPlayerDto {
   username: string;
   userId: mongoose.Schema.Types.ObjectId;
-  cardsInHandLength: number;
-  isOwner: boolean;
+  cardsInHand: Card[] | number;
+  /* isOwner: boolean; */
+  stopped: false;
 }
 
 export class UserGameViewDto {
@@ -50,9 +51,10 @@ export class UserGameViewDto {
   code: string;
   drawPileLength: number;
   discardPileLength: number;
-  status: 'lobby' | 'started' | 'endScreen';
+  status: 'lobby' | 'inGame' | 'endScreen';
   turn: number;
   users: UserGameViewPlayerDto[];
+  lastDiscardedCard: Card;
 }
 
 export class PlayCardDto {

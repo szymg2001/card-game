@@ -43,10 +43,13 @@ export class GameGateway implements OnGatewayInit {
     return game;
   }
 
-  async startGameForUsers(usersIdArray: ObjectId[], data: UserGameViewDto) {
+  async startGameForUsers(
+    usersIdArray: ObjectId[],
+    gameId: mongoose.Types.ObjectId,
+  ) {
     const users = await this.userModel.find({ _id: { $in: usersIdArray } });
     users.forEach((el) => {
-      this.server.to(el.socketId).emit('gameStarted', data);
+      this.server.to(el.socketId).emit('gameStarted', gameId);
     });
   }
 
@@ -157,6 +160,8 @@ export class GameGateway implements OnGatewayInit {
       const { gameId, userId, cardIndex, selectedColor } = data.data;
       //Get socketId of every user
       let game = await this.getGame(gameId);
+      if (game.status !== 'inGame') {
+      }
 
       //Get user index and cards
       const userIndex = game.users.findIndex(
@@ -164,6 +169,11 @@ export class GameGateway implements OnGatewayInit {
       );
 
       await this.playCardFunction(cardIndex, game, userIndex, selectedColor);
+
+      //Check if player has empty hand = game end
+      if (game.users[userIndex].cardsInHand.length === 0) {
+        game.status = 'endScreen';
+      }
 
       //Update turn and save game
       game.turn = await this.updateTurn(
