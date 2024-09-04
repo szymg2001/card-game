@@ -9,7 +9,7 @@ interface InputI {
   inputStyles?: React.CSSProperties;
 }
 
-function Input({
+export default function Input({
   label,
   type = "text",
   onChange,
@@ -19,9 +19,11 @@ function Input({
 }: InputI) {
   return (
     <div className="input">
-      <label htmlFor={id} className="input__label" style={{ ...labelStyles }}>
-        {label}
-      </label>
+      {label && (
+        <label htmlFor={id} className="input__label" style={{ ...labelStyles }}>
+          {label}
+        </label>
+      )}
       <input
         style={{ ...inputStyles }}
         id={id}
