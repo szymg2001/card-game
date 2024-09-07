@@ -2,7 +2,6 @@ import {
   ActionReducerMapBuilder,
   createAsyncThunk,
   createSlice,
-  isPending,
 } from "@reduxjs/toolkit";
 import { RootState } from "./store";
 import getHeaders from "../headers";
@@ -75,10 +74,15 @@ export const authUser = createAsyncThunk<
 type userDataType = {};
 
 const initialState = {
-  data: null as userDataType | null,
+  data: loadFromLocalStorage<userDataType>("user") as userDataType | null,
   isPending: false,
   requestId: null as null | string,
 };
+
+export function loadFromLocalStorage<T>(key: string): T | null {
+  const storedData = localStorage.getItem(key);
+  return storedData ? JSON.parse(storedData) : null;
+}
 
 const userSlice = createSlice({
   name: "user",
