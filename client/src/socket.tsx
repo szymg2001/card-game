@@ -1,5 +1,0 @@
-import { io } from "socket.io-client";
-
-const URL = import.meta.env.SOCKET_URL;
-
-export const socket = io(URL, { transports: ["websocket"] });
