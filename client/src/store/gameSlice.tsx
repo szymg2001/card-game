@@ -9,6 +9,26 @@ import getHeaders from "../headers";
 
 type gameDataType = {};
 
+export const getGame = createAsyncThunk<
+  gameDataType,
+  string,
+  { state: RootState }
+>("game/getGame", async (id, thunkApi) => {
+  try {
+    const { game } = thunkApi.getState();
+    if (game.isPending && game.requestId !== thunkApi.requestId) return;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SERVER_URL}game/${id}`,
+      { method: "GET", credentials: "include", headers: getHeaders() }
+    );
+
+    return response.json();
+  } catch (error) {
+    return thunkApi.rejectWithValue(error);
+  }
+});
+
 export const createGame = createAsyncThunk<
   { gameId: string },
   { ownerId: string },
@@ -59,6 +79,24 @@ const gameSlice = createSlice({
         state.requestId = null;
       })
       .addCase(createGame.rejected, (state, action) => {
+        state.isPending = false;
+        state.requestId = null;
+        //set error
+      })
+      .addCase(getGame.pending, (state, action) => {
+        if (state.isPending) return;
+        state.isPending = true;
+        state.requestId = action.meta.requestId;
+      })
+      .addCase(getGame.fulfilled, (state, { payload }) => {
+        if (!payload) return;
+
+        state.isPending = false;
+        state.requestId = null;
+
+        state.data = payload;
+      })
+      .addCase(getGame.rejected, (state, action) => {
         state.isPending = false;
         state.requestId = null;
         //set error
