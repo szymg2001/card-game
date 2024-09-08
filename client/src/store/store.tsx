@@ -1,9 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer from "./userSlice";
+import gameReducer from "./gameSlice";
 import listenerMiddleWare from "./listenerMiddleware";
 
 const store = configureStore({
-  reducer: { user: userReducer },
+  reducer: { user: userReducer, game: gameReducer },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(listenerMiddleWare.middleware),
 });
