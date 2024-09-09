@@ -56,7 +56,7 @@ export const authUser = createAsyncThunk<
     const endpoint =
       data.username || data.confirmPassword ? "login" : "register";
     const response = await fetch(
-      `${import.meta.env.VITE_SERVER_URL}${endpoint}`,
+      `${import.meta.env.VITE_SERVER_URL}auth/${endpoint}`,
       {
         method: "POST",
         body: JSON.stringify(data),
