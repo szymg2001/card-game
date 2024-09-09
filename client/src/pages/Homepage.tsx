@@ -1,9 +1,22 @@
 import React from "react";
 import Button from "../components/Button";
+import getHeaders from "../headers";
+import { useNavigate } from "react-router-dom";
 
 export default function Homepage() {
-  const [showCodebox, setShowCodebox] = React.useState(false);
-  const handleCreate = () => {};
+  const navigate = useNavigate();
+
+  const handleCreate = async () => {
+    const response = await fetch(
+      `${import.meta.env.VITE_SERVER_URL}game/create`,
+      { method: "POST", headers: getHeaders(), credentials: "include" }
+    );
+
+    if (!response.ok) return; //error
+
+    const data = await response.json();
+    navigate(`/game/${data.gameId}`);
+  };
 
   const handleJoin = () => {};
 
