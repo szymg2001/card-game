@@ -2,9 +2,11 @@ import React from "react";
 import Button from "../components/Button";
 import getHeaders from "../headers";
 import { useNavigate } from "react-router-dom";
+import Codebox from "../components/Homepage/Codebox";
 
 export default function Homepage() {
   const navigate = useNavigate();
+  const [showCode, setShowCode] = React.useState(false);
 
   const handleCreate = async () => {
     const response = await fetch(
@@ -18,8 +20,6 @@ export default function Homepage() {
     navigate(`/game/${data.gameId}`);
   };
 
-  const handleJoin = () => {};
-
   const handleSettings = () => {};
 
   const handleLogout = () => {};
@@ -28,10 +28,11 @@ export default function Homepage() {
     <div className="homepage">
       <div className="homepage__menu">
         <Button onClick={handleCreate}>Create game</Button>
-        <Button onClick={handleJoin}>Join game</Button>
+        <Button onClick={() => setShowCode(true)}>Join game</Button>
         <Button onClick={handleSettings}>Settings</Button>
         <Button onClick={handleLogout}>Logout</Button>
       </div>
+      {showCode && <Codebox setShow={setShowCode} />}
     </div>
   );
 }
