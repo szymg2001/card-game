@@ -15,7 +15,7 @@ export class AuthService {
 
   async register(data: RegisterDto) {
     const { email, username, password, confirmPassword } = data;
-
+    console.log('1', data);
     //Validate data
     if (password !== confirmPassword)
       throw new HttpException('Passwords do not match', HttpStatus.FORBIDDEN);
@@ -34,8 +34,9 @@ export class AuthService {
     };
     let newUser = await this.userModel.create(newUserObject);
 
+    console.log('10');
     return {
-      access_token: await this.jwtService.signAsync({ sub: newUser._id }),
+      token: await this.jwtService.signAsync({ sub: newUser._id }),
     };
   }
 
@@ -53,7 +54,7 @@ export class AuthService {
       throw new HttpException('Incorrect credentials', HttpStatus.FORBIDDEN);
 
     return {
-      access_token: await this.jwtService.signAsync({ sub: user._id }),
+      token: await this.jwtService.signAsync({ sub: user._id }),
     };
   }
 }
