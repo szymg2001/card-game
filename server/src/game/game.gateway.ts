@@ -10,7 +10,7 @@ import mongoose, { Model, ObjectId } from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
 import { PlayCardDto, TakeCardDto, UserGameViewDto } from './game.dto';
-import { Game } from 'src/models/gameSchema';
+import { Game, GameUser } from 'src/models/gameSchema';
 import { returnGame } from './game.service';
 import { Cards } from './cards';
 
@@ -26,13 +26,13 @@ export class GameGateway implements OnGatewayInit {
     this.server = server;
   }
 
-  updateTurn(currentTurn: number, direction: -1 | 1, playersLength: number) {
-    if (currentTurn >= playersLength && direction === 1) currentTurn = 0;
-    else if (currentTurn <= 0 && direction === -1)
-      currentTurn = playersLength - 1;
-    else {
-      currentTurn += direction;
-    }
+  updateTurn(currentTurn: number, direction: -1 | 1, users: GameUser[]) {
+    const playersLength = users.length;
+
+    do {
+      currentTurn = (currentTurn + direction + playersLength) % playersLength;
+    } while (users[currentTurn].cardsInHand.length === 0);
+
     return currentTurn;
   }
 
@@ -172,15 +172,16 @@ export class GameGateway implements OnGatewayInit {
 
       //Check if player has empty hand = game end
       if (game.users[userIndex].cardsInHand.length === 0) {
-        game.status = 'endScreen';
+        if (
+          game.users.filter((el) => el.cardsInHand.length === 0).length >=
+          game.rules.endCondition
+        ) {
+          game.status = 'endScreen';
+        }
       }
 
       //Update turn and save game
-      game.turn = await this.updateTurn(
-        game.turn,
-        game.direction,
-        game.users.length,
-      );
+      game.turn = await this.updateTurn(game.turn, game.direction, game.users);
       await game.save();
 
       //Emit event
@@ -250,11 +251,7 @@ export class GameGateway implements OnGatewayInit {
           }
 
           //Update turn
-          game.turn = this.updateTurn(
-            game.turn,
-            game.direction,
-            game.users.length,
-          );
+          game.turn = this.updateTurn(game.turn, game.direction, game.users);
 
           await game.save();
           this.emitGameAction(game, userId);

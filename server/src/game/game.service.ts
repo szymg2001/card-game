@@ -83,6 +83,7 @@ export class GameService {
           stopped: 0,
         },
       ],
+      rules: data.rules,
       drawPile: [],
       discardPile: [],
       status: 'lobby',
