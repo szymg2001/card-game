@@ -31,7 +31,7 @@ export const getGame = createAsyncThunk<
 
 export const createGame = createAsyncThunk<
   { gameId: string },
-  { ownerId: string },
+  undefined,
   { state: RootState }
 >("game/createGame", async (data, thunkApi) => {
   try {
