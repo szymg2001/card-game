@@ -55,7 +55,7 @@ export const authUser = createAsyncThunk<
 
     const endpoint =
       data.username || data.confirmPassword ? "register" : "login";
-    console.log(endpoint);
+
     const response = await fetch(
       `${import.meta.env.VITE_SERVER_URL}auth/${endpoint}`,
       {
@@ -99,7 +99,6 @@ const userSlice = createSlice({
       })
       .addCase(authUser.fulfilled, (state, { payload }) => {
         if (!payload) return;
-        console.log("payload", payload);
         state.isPending = false;
         state.requestId = null;
         setCookie(payload.token);
