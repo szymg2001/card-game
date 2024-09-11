@@ -13,5 +13,13 @@ export default function Game() {
     dispatch(getGame(id || ""));
   }, [id]);
 
-  return <div className="game"></div>;
+  return (
+    <div className="game">
+      <ul className="game__users">
+        {game.data?.users.map((user) => (
+          <li className="game__user">{user.username}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
