@@ -6,8 +6,32 @@ import {
 import { loadFromLocalStorage } from "./userSlice";
 import { RootState } from "./store";
 import getHeaders from "../headers";
+import { CardColor, CardValue } from "./gameTypes";
 
-type gameDataType = {};
+type Card = {
+  color: CardColor | "black";
+  isSpecial: boolean;
+  value: CardValue;
+  imgName: string;
+  selectedColor?: CardColor;
+};
+
+type gameDataUserType = {
+  username: string;
+  userId: string;
+  cardsInHand: Card[] | number;
+};
+
+type gameDataType = {
+  gameId: string;
+  code: string;
+  drawPileLength: number;
+  discardPileLength: number;
+  status: "lobby" | "inGame" | "endScreen";
+  turn: number;
+  users: gameDataUserType[];
+  lastDiscardedCard: Card;
+};
 
 export const getGame = createAsyncThunk<
   gameDataType,

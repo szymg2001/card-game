@@ -18,8 +18,12 @@ export class GameController {
   constructor(private gameService: GameService) {}
 
   @Post('/create')
-  createGame(@Req() request) {
-    return this.gameService.createGame({ ownerId: request.user.sub });
+  //To change
+  createGame(@Req() request, @Body() dto: any) {
+    return this.gameService.createGame({
+      ownerId: request.user.sub,
+      rules: dto,
+    });
   }
 
   @Post('/join')
@@ -38,4 +42,8 @@ export class GameController {
   startGame(@Body() dto: GameIdDto) {
     return this.gameService.startGame(dto);
   }
+
+  @UseGuards(GameUserGuard)
+  @Post('/leave')
+  leaveGame(@Body() dto: GameIdDto, @Param() params: { id: string }) {}
 }
