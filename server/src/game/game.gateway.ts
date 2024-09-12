@@ -10,7 +10,7 @@ import mongoose, { Model, ObjectId } from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import { User } from 'src/models/userSchema';
 import { PlayCardDto, TakeCardDto, UserGameViewDto } from './game.dto';
-import { Game } from 'src/models/gameSchema';
+import { Game, GameUser } from 'src/models/gameSchema';
 import { returnGame } from './game.service';
 import { Cards } from './cards';
 
@@ -26,13 +26,26 @@ export class GameGateway implements OnGatewayInit {
     this.server = server;
   }
 
-  updateTurn(currentTurn: number, direction: -1 | 1, playersLength: number) {
-    if (currentTurn >= playersLength && direction === 1) currentTurn = 0;
-    else if (currentTurn <= 0 && direction === -1)
-      currentTurn = playersLength - 1;
-    else {
-      currentTurn += direction;
-    }
+  async emitToUsers<T>(
+    userIds: mongoose.Types.ObjectId[] | string[],
+    event: string,
+    data: T,
+  ) {
+    const users = await this.userModel.find({ _id: { $in: userIds } });
+    users.forEach((el) => {
+      this.server.to(el.socketId).emit(event, data);
+    });
+  }
+
+  async updateGameData(gameData: UserGameViewDto) {}
+
+  updateTurn(currentTurn: number, direction: -1 | 1, users: GameUser[]) {
+    const playersLength = users.length;
+
+    do {
+      currentTurn = (currentTurn + direction + playersLength) % playersLength;
+    } while (users[currentTurn].cardsInHand.length === 0);
+
     return currentTurn;
   }
 
@@ -43,7 +56,7 @@ export class GameGateway implements OnGatewayInit {
     return game;
   }
 
-  async startGameForUsers(
+  /* async startGameForUsers(
     usersIdArray: ObjectId[],
     gameId: mongoose.Types.ObjectId,
   ) {
@@ -51,14 +64,21 @@ export class GameGateway implements OnGatewayInit {
     users.forEach((el) => {
       this.server.to(el.socketId).emit('gameStarted', gameId);
     });
-  }
+  } */
 
-  async emitGameAction(
+  /* async removeGame(usersIdArray: ObjectId[], gameId: mongoose.Types.ObjectId) {
+    const users = await this.userModel.find({ _id: { $in: usersIdArray } });
+    users.forEach((el) => {
+      this.server.to(el.socketId).emit('gameRemoved', gameId);
+    });
+  } */
+
+  /* async emitGameAction(
     game: mongoose.Document<unknown, {}, Game> &
       Game & {
         _id: mongoose.Types.ObjectId;
       },
-    userId: mongoose.Types.ObjectId,
+    userId: mongoose.Types.ObjectId | string,
   ) {
     const idArray = game.users.map((user) => user.userId);
     const users = await this.userModel.find({ _id: { $in: idArray } });
@@ -67,7 +87,7 @@ export class GameGateway implements OnGatewayInit {
     users.forEach((el) => {
       this.server.to(el.socketId).emit('gameAction', returnData);
     });
-  }
+  } */
 
   async playCardFunction(
     cardIndex: number[],
@@ -172,19 +192,21 @@ export class GameGateway implements OnGatewayInit {
 
       //Check if player has empty hand = game end
       if (game.users[userIndex].cardsInHand.length === 0) {
-        game.status = 'endScreen';
+        if (
+          game.users.filter((el) => el.cardsInHand.length === 0).length >=
+          game.rules.endCondition
+        ) {
+          game.status = 'endScreen';
+        }
       }
 
       //Update turn and save game
-      game.turn = await this.updateTurn(
-        game.turn,
-        game.direction,
-        game.users.length,
-      );
+      game.turn = await this.updateTurn(game.turn, game.direction, game.users);
       await game.save();
 
       //Emit event
-      this.emitGameAction(game, userId);
+      const idArray = game.users.map((user) => user.userId.toString());
+      this.emitToUsers(idArray, 'updateGameData', returnGame(game, userId));
     } catch (error) {
       client.emit('error', { message: error.message });
     }
@@ -250,14 +272,11 @@ export class GameGateway implements OnGatewayInit {
           }
 
           //Update turn
-          game.turn = this.updateTurn(
-            game.turn,
-            game.direction,
-            game.users.length,
-          );
+          game.turn = this.updateTurn(game.turn, game.direction, game.users);
 
           await game.save();
-          this.emitGameAction(game, userId);
+          const idArray = game.users.map((user) => user.userId.toString());
+          this.emitToUsers(idArray, 'updateGameData', returnGame(game, userId));
         } catch (error) {
           client.emit('error', { message: error.message });
         }

@@ -3,6 +3,7 @@ import Login from "../../pages/Login";
 import Register from "../../pages/Register";
 import PrivateRoutes from "./PrivateRoutes";
 import Game from "../../pages/Game";
+import Homepage from "../../pages/Homepage";
 
 export default function RouterComponent() {
   return (
@@ -11,7 +12,7 @@ export default function RouterComponent() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route element={<PrivateRoutes />}>
-          <Route path="/" element={<h1>homepage</h1>} />
+          <Route path="/" element={<Homepage />} />
           <Route path="/game/:id" element={<Game />} />
         </Route>
       </Routes>

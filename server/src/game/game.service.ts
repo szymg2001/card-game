@@ -17,7 +17,7 @@ export function returnGame(
     Game & {
       _id: mongoose.Types.ObjectId;
     },
-  userId: mongoose.Types.ObjectId,
+  userId: mongoose.Types.ObjectId | string,
 ): UserGameViewDto {
   return {
     gameId: game._id,
@@ -83,6 +83,7 @@ export class GameService {
           stopped: 0,
         },
       ],
+      rules: data.rules,
       drawPile: [],
       discardPile: [],
       status: 'lobby',
@@ -122,6 +123,7 @@ export class GameService {
     });
 
     await game.save();
+    //emit update event
     return {
       gameId: game._id,
     };
@@ -155,10 +157,33 @@ export class GameService {
     //Change status
     game.status = 'inGame';
 
+    await game.save();
     //Emit event to users
-    const userIdArray = game.users.map((el) => el.userId);
-    this.gameGateway.startGameForUsers(userIdArray, game._id);
+    const userIdArray = game.users.map((el) => el.userId.toString());
+    this.gameGateway.emitToUsers(userIdArray, 'gameStarted', game._id);
+  }
 
+  async leaveGame(data: GameIdDto & { id: mongoose.Schema.Types.ObjectId }) {
+    const { gameId, id } = data;
+
+    const game = await this.gameModel.findById(gameId);
+    if (!game) throw new HttpException('Game not found', HttpStatus.NOT_FOUND);
+
+    const userIndex = game.users.findIndex((user) => user.userId === id);
+    if (!userIndex)
+      throw new HttpException(
+        'User is not part of the game',
+        HttpStatus.NOT_FOUND,
+      );
+
+    const userIdArray = game.users.map((el) => el.userId.toString());
+    if (game.users[userIndex].isOwner) {
+      await game.deleteOne();
+      return this.gameGateway.emitToUsers(userIdArray, 'gameRemoved', gameId);
+    } else {
+      game.users = game.users.filter((el) => el.userId === id);
+      this.gameGateway.emitToUsers(userIdArray, 'userLeft', id);
+    }
     await game.save();
   }
 }
