@@ -56,39 +56,6 @@ export class GameGateway implements OnGatewayInit {
     return game;
   }
 
-  /* async startGameForUsers(
-    usersIdArray: ObjectId[],
-    gameId: mongoose.Types.ObjectId,
-  ) {
-    const users = await this.userModel.find({ _id: { $in: usersIdArray } });
-    users.forEach((el) => {
-      this.server.to(el.socketId).emit('gameStarted', gameId);
-    });
-  } */
-
-  /* async removeGame(usersIdArray: ObjectId[], gameId: mongoose.Types.ObjectId) {
-    const users = await this.userModel.find({ _id: { $in: usersIdArray } });
-    users.forEach((el) => {
-      this.server.to(el.socketId).emit('gameRemoved', gameId);
-    });
-  } */
-
-  /* async emitGameAction(
-    game: mongoose.Document<unknown, {}, Game> &
-      Game & {
-        _id: mongoose.Types.ObjectId;
-      },
-    userId: mongoose.Types.ObjectId | string,
-  ) {
-    const idArray = game.users.map((user) => user.userId);
-    const users = await this.userModel.find({ _id: { $in: idArray } });
-
-    let returnData = returnGame(game, userId);
-    users.forEach((el) => {
-      this.server.to(el.socketId).emit('gameAction', returnData);
-    });
-  } */
-
   async playCardFunction(
     cardIndex: number[],
     game: Game,
